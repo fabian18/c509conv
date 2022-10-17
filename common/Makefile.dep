@@ -1,0 +1,1 @@
+common_ARCHIVES = $(BIN_DIR)/common.a

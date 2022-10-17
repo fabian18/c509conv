@@ -1,0 +1,1 @@
+c509_ARCHIVES = $(BIN_DIR)/c509.a $(BIN_DIR)/mbedtls_ecp_compression.a
