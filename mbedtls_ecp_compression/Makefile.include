@@ -1,0 +1,1 @@
+mbedtls_ecp_compression_INCLUDES = -I $(SUBMODULE_DIR)/mbedtls_ecp_compression

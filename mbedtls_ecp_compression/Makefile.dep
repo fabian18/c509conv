@@ -1,0 +1,1 @@
+mbedtls_ecp_compression_ARCHIVES = $(BIN_DIR)/mbedtls_ecp_compression.a
