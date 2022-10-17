@@ -1,0 +1,4 @@
+[submodule "submodules/mbedtls_ecp_compression"]
+	path = submodules/mbedtls_ecp_compression
+	url = https://github.com/fabian18/mbedtls_ecp_compression
+	branch = mbedtls_ecp_decompress_reuse_input_buffer
