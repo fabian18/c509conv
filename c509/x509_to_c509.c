@@ -1004,3 +1004,171 @@ int x509_to_c509(void *c509, size_t c_size, const void *x509, size_t x_size)
     }
     return writer.dst - (uint8_t *)c509;
 }
+
+int x509_to_c509_enc_version(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_version(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_serial_number(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_serial_number(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_signature(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_signature(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_issuer(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_issuer(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_validity(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_validity(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_subject(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_subject(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_subject_public_key_info(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_subject_public_key_info(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_issuer_unique_id(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_issuer_unique_id(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_subject_unique_id(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_subject_unique_id(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_extensions(void *c509, size_t c_size, const void *x509, size_t x_size)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_extensions(&writer.dst, writer.dst_end, &in, in_end)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_signature_algorithm(void *c509, size_t c_size, const void *x509, size_t x_size, c509_sig_algorithm_id_t *sig_id)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_signature_algorithm(&writer.dst, writer.dst_end, &in, in_end, sig_id)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}
+
+int x509_to_c509_enc_signature_value(void *c509, size_t c_size, const void *x509, size_t x_size, c509_sig_algorithm_id_t sig_id)
+{
+    uint8_t *out = c509;
+    uint8_t *out_end = out + c_size;
+    const uint8_t *in = x509;
+    const uint8_t *in_end = in + x_size;
+    ssize_t ret;
+    c509_writer_t writer = C509_WRITER_INITIALIZER(out, out_end);
+    if ((ret = _enc_signature_value(&writer.dst, writer.dst_end, &in, in_end, sig_id)) < 0) {
+        return ret;
+    }
+    return writer.dst - (uint8_t *)c509;
+}

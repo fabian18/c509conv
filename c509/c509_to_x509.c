@@ -904,3 +904,129 @@ int c509_to_x509(void *x509, size_t x_size, const void *c509, size_t c_size)
 
     return out - (uint8_t *)x509;
 }
+
+int c509_to_x509_enc_version(void *x509, size_t x_size, const void *c509, size_t c_size)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_version(&out, out_end, &reader.src, reader.src_end)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_serial(void *x509, size_t x_size, const void *c509, size_t c_size)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_serial(&out, out_end, &reader.src, reader.src_end)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_issuer(void *x509, size_t x_size, const void *c509, size_t c_size)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_issuer(&out, out_end, &reader.src, reader.src_end)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_validity(void *x509, size_t x_size, const void *c509, size_t c_size)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_validity(&out, out_end, &reader.src, reader.src_end)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_subject(void *x509, size_t x_size, const void *c509, size_t c_size)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_subject(&out, out_end, &reader.src, reader.src_end)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_subject_public_key_info(void *x509, size_t x_size, const void *c509, size_t c_size)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_subject_public_key_info(&out, out_end, &reader.src, reader.src_end)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_extennsions(void *x509, size_t x_size, const void *c509, size_t c_size)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_extensions(&out, out_end, &reader.src, reader.src_end)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_signature_algorithm(void *x509, size_t x_size, const void *c509, size_t c_size, c509_sig_algorithm_id_t *id)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_signature_algorithm(&out, out_end, &reader.src, reader.src_end, id)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}
+
+int c509_to_x509_enc_signature_value(void *x509, size_t x_size, const void *c509, size_t c_size, c509_sig_algorithm_id_t id)
+{
+    uint8_t *out = x509;
+    uint8_t *out_end = out + x_size;
+    const uint8_t *in = c509;
+    const uint8_t *in_end = in + c_size;
+    ssize_t ret;
+    c509_reader_t reader = C509_READER_INITIALIZER(in, in_end);
+    if ((ret = _enc_signature_value(&out, out_end, &reader.src, reader.src_end, id)) < 0) {
+        return ret;
+    }
+    return out - (uint8_t *)x509;
+}

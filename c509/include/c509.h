@@ -304,6 +304,68 @@ int x509_to_c509(void *c509,
                  const void *x509,
                  size_t x_size);
 
+int x509_to_c509_enc_version(void *c509,
+                             size_t c_size,
+                             const void *x509,
+                             size_t x_size);
+
+int x509_to_c509_enc_serial_number(void *c509,
+                                   size_t c_size,
+                                   const void *x509,
+                                   size_t x_size);
+
+int x509_to_c509_enc_signature(void *c509,
+                               size_t c_size,
+                               const void *x509,
+                               size_t x_size);
+
+int x509_to_c509_enc_issuer(void *c509,
+                            size_t c_size,
+                            const void *x509,
+                            size_t x_size);
+
+int x509_to_c509_enc_validity(void *c509,
+                              size_t c_size,
+                              const void *x509,
+                              size_t x_size);
+
+int x509_to_c509_enc_subject(void *c509,
+                             size_t c_size,
+                             const void *x509,
+                             size_t x_size);
+
+int x509_to_c509_enc_subject_public_key_info(void *c509,
+                                             size_t c_size,
+                                             const void *x509,
+                                             size_t x_size);
+
+int x509_to_c509_enc_issuer_unique_id(void *c509,
+                                      size_t c_size,
+                                      const void *x509,
+                                      size_t x_size);
+
+int x509_to_c509_enc_subject_unique_id(void *c509,
+                                       size_t c_size,
+                                       const void *x509,
+                                       size_t x_size);
+
+int x509_to_c509_enc_extensions(void *c509,
+                                size_t c_size,
+                                const void *x509,
+                                size_t x_size);
+
+int x509_to_c509_enc_signature_algorithm(void *c509,
+                                         size_t c_size,
+                                         const void *x509,
+                                         size_t x_size,
+                                         c509_sig_algorithm_id_t *sig_id);
+
+int x509_to_c509_enc_signature_value(void *c509,
+                                     size_t c_size,
+                                     const void *x509,
+                                     size_t x_size,
+                                     c509_sig_algorithm_id_t sig_id);
+
 int c509_read_certificate_start(c509_reader_t *reader,
                                 c509_array_iterator_t *iter);
 
@@ -425,8 +487,57 @@ int c509_read_signature_ecdsa(c509_reader_t *reader,
 int c509_read_signature(c509_reader_t *reader,
                         c509_signature_t *signature);
 
-int c509_to_x509(void *x509, size_t x_size, const void *c509, size_t c_size);
+int c509_to_x509(void *x509,
+                 size_t x_size,
+                 const void *c509,
+                 size_t c_size);
 
+int c509_to_x509_enc_version(void *x509,
+                             size_t x_size,
+                             const void *c509,
+                             size_t c_size);
+
+int c509_to_x509_enc_serial(void *x509,
+                            size_t x_size,
+                            const void *c509,
+                            size_t c_size);
+
+int c509_to_x509_enc_issuer(void *x509,
+                            size_t x_size,
+                            const void *c509,
+                            size_t c_size);
+
+int c509_to_x509_enc_validity(void *x509,
+                              size_t x_size,
+                              const void *c509,
+                              size_t c_size);
+
+int c509_to_x509_enc_subject(void *x509,
+                             size_t x_size,
+                             const void *c509,
+                             size_t c_size);
+
+int c509_to_x509_enc_subject_public_key_info(void *x509,
+                                             size_t x_size,
+                                             const void *c509,
+                                             size_t c_size);
+
+int c509_to_x509_enc_extennsions(void *x509,
+                                 size_t x_size,
+                                 const void *c509,
+                                 size_t c_size);
+
+int c509_to_x509_enc_signature_algorithm(void *x509,
+                                         size_t x_size,
+                                         const void *c509,
+                                         size_t c_size,
+                                         c509_sig_algorithm_id_t *id);
+
+int c509_to_x509_enc_signature_value(void *x509,
+                                     size_t x_size,
+                                     const void *c509,
+                                     size_t c_size,
+                                     c509_sig_algorithm_id_t id);
 typedef struct {
     void *buf;
     size_t buf_size;
