@@ -6,7 +6,7 @@ ifneq (,$(DEBUG))
   DEBUG_CFLAGS = -g -O0
 endif
 
-CFLAGS += $(DEBUG_CFLAGS) -Wall -pedantic
+CFLAGS += $(DEBUG_CFLAGS) -Wall -pedantic -Wextra
 #CFLAGS += -Wno-unused-variable -Wno-unused-function
 
 LDFLAGS += -L lib

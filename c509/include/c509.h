@@ -160,18 +160,18 @@ int c509_write_ec_subject_public_key_info(c509_writer_t *writer,
 
 typedef uint8_t c509_extension_id_t;
 
-typedef struct _C509_BUF_ALIGNED {
+typedef struct {
     c509_extension_id_t id;
     bool critical;
 } c509_extension_base_t;
 
-typedef struct _C509_BUF_ALIGNED {
+typedef struct {
     c509_extension_base_t extension;
     size_t identifier_len;
     const uint8_t *identifier;
 } c509_extension_subject_key_identifier_t;
 
-typedef struct _C509_BUF_ALIGNED {
+typedef struct {
     c509_extension_base_t extension;
     size_t identifier_len;
     const uint8_t *identifier;
@@ -183,13 +183,13 @@ typedef struct _C509_BUF_ALIGNED {
 #endif
 } c509_extension_authority_key_identifier_t;
 
-typedef struct _C509_BUF_ALIGNED {
+typedef struct {
     c509_extension_base_t extension;
     bool ca;
     int pathlen;
 } c509_extension_basic_constraints_t;
 
-typedef struct _C509_BUF_ALIGNED {
+typedef struct {
     c509_extension_base_t extension;
     uint16_t usage;
 } c509_extension_key_usage_t;
@@ -208,29 +208,45 @@ typedef enum {
     C509_EXTENSION_IP_RESOURCE_NULL = 1,
     C509_EXTENSION_IP_RESOURCE_PREFIX = 2,
     C509_EXTENSION_IP_RESOURCE_RANGE = 3,
-} c509_extension_ipv6_resource_type_t;
+} c509_extension_ip_resource_type_t;
 
-struct c509_extension_ipv6_range_or_prefix_list;
-typedef struct c509_extension_ipv6_range_or_prefix_list {
+typedef struct c509_extension_ip_range_or_prefix {
     union {
         c509_extension_ip_resource_prefix_t prefix;
         c509_extension_ip_resource_range_t range;
     } res;
     unsigned char type;
-    struct c509_extension_ipv6_range_or_prefix_list *next;
-} c509_extension_ipv6_range_or_prefix_list_t;
+} c509_extension_ip_range_or_prefix_t;
 
-typedef struct _C509_BUF_ALIGNED {
+typedef struct c509_extension_ip_resource {
     c509_extension_base_t extension;
-    c509_extension_ipv6_range_or_prefix_list_t range_or_prefix;
+    unsigned numof;
 } c509_extension_ip_resource_t;
 
-struct c509_extension_list;
+typedef struct c509_extension_ip_resource_vla {
+    c509_extension_ip_resource_t ip;
+    c509_extension_ip_range_or_prefix_t range_or_prefix[];
+} c509_extension_ip_resource_vla_t;
 
-typedef struct _C509_BUF_ALIGNED c509_extension_list {
-    struct c509_extension_list *next;
-    c509_extension_base_t extension;
-} c509_extension_list_t;
+#define c509_extension_ip_resource_vla_x_t(x)                   \
+struct {                                                        \
+    c509_extension_ip_resource_t ip;                            \
+    c509_extension_ip_range_or_prefix_t range_or_prefix[x];     \
+}
+
+#ifndef CONFIG_C509_EXTN_IP_RESTRICT_MAX
+#define CONFIG_C509_EXTN_IP_RESTRICT_MAX    (2)
+#endif
+
+#define C509_EXTN_IP_RESTRICT_MAX           CONFIG_C509_EXTN_IP_RESTRICT_MAX
+
+typedef struct c509_extensions {
+    c509_extension_subject_key_identifier_t ski;
+    c509_extension_authority_key_identifier_t aki;
+    c509_extension_basic_constraints_t bc;
+    c509_extension_key_usage_t ku;
+    c509_extension_ip_resource_vla_x_t(C509_EXTN_IP_RESTRICT_MAX) ip;
+} c509_extensions_t;
 
 int c509_write_extensions_start(c509_writer_t *writer);
 
@@ -430,6 +446,10 @@ int c509_read_extensions_start(c509_reader_t *reader,
 int c509_read_extensions_finish(c509_reader_t *reader,
                                 c509_array_iterator_t *iter);
 
+int c509_read_extensions_next(c509_reader_t *reader, c509_array_iterator_t *iter,
+                              void *extn_type, size_t size,
+                              int (*extn_cb)(void * extn, size_t size));
+
 int c509_extension_iterator_next(c509_array_iterator_t *iter);
 
 int c509_read_extension(c509_reader_t *reader,
@@ -460,7 +480,7 @@ int c509_read_extension_ip_resource_finish(c509_reader_t *reader,
                                            c509_array_iterator_t *iter);
 
 int c509_read_extension_ip_resource_null(c509_reader_t *reader,
-                                         c509_extension_ip_resource_t *ip);
+                                         c509_extension_ip_range_or_prefix_t *range_or_prefix);
 
 int c509_read_extension_ip_resource_address_or_range_next(c509_array_iterator_t *iter);
 
@@ -471,9 +491,9 @@ int c509_read_extension_ip_resource_address_or_range_finish(c509_reader_t *reade
                                                             c509_array_iterator_t *iter);
 
 int c509_read_extension_ip_resource(c509_reader_t *reader,
-                                    c509_extension_ipv6_range_or_prefix_list_t *range_or_prefix);
+                                    c509_extension_ip_range_or_prefix_t *range_or_prefix);
 
-int c509_read_extensions(c509_reader_t *reader, void *extn_buf, size_t *extn_buf_size);
+int c509_read_extensions(c509_reader_t *reader, c509_extensions_t *extn);
 
 int c509_read_signature_algorithm(c509_reader_t *reader,
                                   c509_sig_algorithm_id_t *sig_id);
@@ -548,7 +568,7 @@ typedef struct {
     c509_validity_t validity;
     c509_name_attribute_t *subject;
     c509_pk_info_t subject_public_key;
-    c509_extension_list_t *extensions;
+    c509_extensions_t extensions;
     c509_signature_t signature;
 } c509_crt_t;
 
