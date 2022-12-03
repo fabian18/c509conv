@@ -837,20 +837,35 @@ int c509_to_x509(void *x509, size_t x_size, const void *c509, size_t c_size)
         return ret;
     }
 
-    struct memregion_t certificate_seq = _reserve(&out, 4);
-    size_t certificate_size = 0;
+    uint8_t *d = out_end;
+    uint8_t *start = out;
+    if ((ret = mbedtls_asn1_write_len(&d, start, d - out)) < 0) {
+        return ret;
+    }
+    if ((ret = mbedtls_asn1_write_tag(&d, start, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) < 0) {
+        return ret;
+    }
+    memmove(out, d, out_end - d);
+    out += out_end - d;
 
-    struct memregion_t tbs_certificate_seq = _reserve(&out, 4);
-    size_t tbs_certificate_size = 0;
+    d = out_end;
+    uint8_t *certificate_start = out;
+    if ((ret = mbedtls_asn1_write_len(&d, certificate_start, d - out)) < 0) {
+        return ret;
+    }
+    if ((ret = mbedtls_asn1_write_tag(&d, certificate_start, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) < 0) {
+        return ret;
+    }
+    memmove(out, d, out_end - d);
+    out += out_end - d;
 
+    uint8_t *tbs_certificate_start = out;
     if ((ret = _enc_version(&out, out_end, &reader.src, reader.src_end)) < 0) {
         return ret;
     }
-    tbs_certificate_size += ret;
     if ((ret = _enc_serial(&out, out_end, &reader.src, reader.src_end)) < 0) {
         return ret;
     }
-    tbs_certificate_size += ret;
 
     struct memregion_t signature = _reserve(&out, 24);
     size_t signature_size = 0;
@@ -858,76 +873,61 @@ int c509_to_x509(void *x509, size_t x_size, const void *c509, size_t c_size)
     if ((ret = _enc_issuer(&out, out_end, &reader.src, reader.src_end)) < 0) {
         return ret;
     }
-    tbs_certificate_size += ret;
     if ((ret = _enc_validity(&out, out_end, &reader.src, reader.src_end)) < 0) {
         return ret;
     }
-    tbs_certificate_size += ret;
     if ((ret = _enc_subject(&out, out_end, &reader.src, reader.src_end)) < 0) {
         return ret;
     }
-    tbs_certificate_size += ret;
     if ((ret = _enc_subject_public_key_info(&out, out_end, &reader.src, reader.src_end)) < 0) {
         return ret;
     }
-    tbs_certificate_size += ret;
     if ((ret = _enc_extensions(&out, out_end, &reader.src, reader.src_end)) < 0) {
         return ret;
     }
-    tbs_certificate_size += ret;
-    certificate_size += tbs_certificate_size;
 
+    uint8_t *signature_start = out;
     c509_sig_algorithm_id_t sig_id = -1;
     if ((ret = _enc_signature_algorithm(&out, out_end, &reader.src, reader.src_end, &sig_id)) < 0) {
         return ret;
     }
-    certificate_size += ret;
     signature_size = ret;
     if (signature_size > (size_t)(signature.end - signature.start)) {
         return -ENOBUFS;
     }
     memcpy(signature.start, out - signature_size, signature_size);
-    tbs_certificate_size += signature_size;
-    certificate_size += signature_size;
-
     if ((ret = _enc_signature_value(&out, out_end, &reader.src, reader.src_end, sig_id)) < 0) {
         return ret;
     }
-    certificate_size += ret;
     if ((ret = c509_read_certificate_finish(&reader, &cert_iter)) < 0) {
         return ret;
     }
-
     memmove(signature.start + signature_size, signature.end, out - signature.end);
     out -= ((signature.end - signature.start) - signature_size);
+    signature_start -= ((signature.end - signature.start) - signature_size);
 
-    uint8_t *ptr;
-    size_t len;
+    d = tbs_certificate_start;
+    if ((ret = mbedtls_asn1_write_len(&d, certificate_start, signature_start - d)) < 0) {
+        return ret;
+    }
+    if ((ret = mbedtls_asn1_write_tag(&d, certificate_start, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) < 0) {
+        return ret;
+    }
+    memmove(certificate_start, d, out - d);
+    out -= (d - certificate_start);
+    tbs_certificate_start -= (d - certificate_start);
 
-    ptr = tbs_certificate_seq.end;
-    if ((ret = mbedtls_asn1_write_len(&ptr, tbs_certificate_seq.start, tbs_certificate_size)) < 0) {
+    d = certificate_start;
+    if ((ret = mbedtls_asn1_write_len(&d, start, out - d)) < 0) {
         return ret;
     }
-    if ((ret = mbedtls_asn1_write_tag(&ptr, tbs_certificate_seq.start, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) < 0) {
+    if ((ret = mbedtls_asn1_write_tag(&d, start, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) < 0) {
         return ret;
     }
-    len = tbs_certificate_seq.end - ptr;
-    memmove(tbs_certificate_seq.start, ptr, len);
-    memmove(tbs_certificate_seq.start + len, tbs_certificate_seq.end, certificate_size);
-    out -= ((tbs_certificate_seq.end - tbs_certificate_seq.start) - len);
-    certificate_size += len;
-
-    ptr = certificate_seq.end;
-    if ((ret = mbedtls_asn1_write_len(&ptr, certificate_seq.start, certificate_size)) < 0) {
-        return ret;
-    }
-    if ((ret = mbedtls_asn1_write_tag(&ptr, certificate_seq.start, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) < 0) {
-        return ret;
-    }
-    len = certificate_seq.end - ptr;
-    memmove(certificate_seq.start, ptr, len);
-    memmove(certificate_seq.start + len, certificate_seq.end, certificate_size);
-    out -= ((certificate_seq.end - certificate_seq.start) - len);
+    memmove(start, d, out - d);
+    out -= (d - start);
+    tbs_certificate_start -= (d - start);
+    certificate_start -= (d - start);
 
     return out - (uint8_t *)x509;
 }
