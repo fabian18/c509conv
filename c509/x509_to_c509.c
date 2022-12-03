@@ -389,19 +389,27 @@ static ssize_t _enc_extension_ip_resource(uint8_t **dst, const uint8_t *dst_end,
                 if ((ret = c509_write_extension_ip_resource_address_or_range_start(&writer)) < 0) {
                     return ret;
                 }
-                do {
+                unsigned max = ip6_block->numof;
+                c509_extension_ip_resource_vla_t *ip_vla = (c509_extension_ip_resource_vla_t *)ip6_block;
+                for (unsigned i = 0; i <= max; i++) {
                     if ((ret = mbedtls_asn1_get_tag((unsigned char **)&s, src_end, &len, MBEDTLS_ASN1_BIT_STRING)) == 0) {
-                        memset(&ip6_block->range_or_prefix.res.prefix, 0, sizeof(ip6_block->range_or_prefix.res.prefix));
-                        ip6_block->range_or_prefix.type = C509_EXTENSION_IP_RESOURCE_PREFIX;
-                        memcpy(ip6_block->range_or_prefix.res.prefix.addr, s + 1, len - 1);
-                        ip6_block->range_or_prefix.res.prefix.len = ((len - 1) * 8) - s[0];
-                        if ((ret = c509_write_extension_ip_resource_prefix(&writer, &ip6_block->range_or_prefix.res.prefix)) < 0) {
+                        if (i == max) {
+                            return -ENOBUFS;
+                        }
+                        memset(&ip_vla->range_or_prefix[i].res.prefix, 0, sizeof(ip_vla->range_or_prefix[i].res.prefix));
+                        ip_vla->range_or_prefix[i].type = C509_EXTENSION_IP_RESOURCE_PREFIX;
+                        memcpy(ip_vla->range_or_prefix[i].res.prefix.addr, s + 1, len - 1);
+                        ip_vla->range_or_prefix[i].res.prefix.len = ((len - 1) * 8) - s[0];
+                        if ((ret = c509_write_extension_ip_resource_prefix(&writer, &ip_vla->range_or_prefix[i].res.prefix)) < 0) {
                             return ret;
                         }
                         s += len;
                     }
                     else if ((ret = mbedtls_asn1_get_tag((unsigned char **)&s, src_end, &len, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) == 0) {
-                        ip6_block->range_or_prefix.type = C509_EXTENSION_IP_RESOURCE_RANGE;
+                        if (i == max) {
+                            return -ENOBUFS;
+                        }
+                        ip_vla->range_or_prefix[i].type = C509_EXTENSION_IP_RESOURCE_RANGE;
                         uint8_t unused;
                         if ((ret = mbedtls_asn1_get_tag((unsigned char **)&s, src_end, &len, MBEDTLS_ASN1_BIT_STRING)) != 0) {
                             return ret;
@@ -410,8 +418,8 @@ static ssize_t _enc_extension_ip_resource(uint8_t **dst, const uint8_t *dst_end,
                         if (unused > 7) {
                             return -ENOTSUP;
                         }
-                        memset(&ip6_block->range_or_prefix.res.range.min, 0, sizeof(ip6_block->range_or_prefix.res.range.min));
-                        memcpy(ip6_block->range_or_prefix.res.range.min, s + 1, len - 1);
+                        memset(&ip_vla->range_or_prefix[i].res.range.min, 0, sizeof(ip_vla->range_or_prefix[i].res.range.min));
+                        memcpy(ip_vla->range_or_prefix[i].res.range.min, s + 1, len - 1);
                         s += len;
                         if ((ret = mbedtls_asn1_get_tag((unsigned char **)&s, src_end, &len, MBEDTLS_ASN1_BIT_STRING)) != 0) {
                             return ret;
@@ -420,18 +428,18 @@ static ssize_t _enc_extension_ip_resource(uint8_t **dst, const uint8_t *dst_end,
                         if (unused > 7) {
                             return -ENOTSUP;
                         }
-                        memset(&ip6_block->range_or_prefix.res.range.max, 0xff, sizeof(ip6_block->range_or_prefix.res.range.max));
-                        memcpy(ip6_block->range_or_prefix.res.range.max, s + 1, len - 1);
+                        memset(&ip_vla->range_or_prefix[i].res.range.max, 0xff, sizeof(ip_vla->range_or_prefix[i].res.range.max));
+                        memcpy(ip_vla->range_or_prefix[i].res.range.max, s + 1, len - 1);
                         s += len;
-                        ip6_block->range_or_prefix.res.range.max[len - 2] |= (~(((uint8_t)(0xff)) << unused));
-                        if ((ret = c509_write_extension_ip_resource_range(&writer, &ip6_block->range_or_prefix.res.range)) < 0) {
+                        ip_vla->range_or_prefix[i].res.range.max[len - 2] |= (~(((uint8_t)(0xff)) << unused));
+                        if ((ret = c509_write_extension_ip_resource_range(&writer, &ip_vla->range_or_prefix[i].res.range)) < 0) {
                             return ret;
                         }
                     }
                     else {
                         break;
                     }
-                } while (1);
+                }
                 if ((ret = c509_write_extension_ip_resource_address_or_range_finish(&writer)) < 0) {
                     return ret;
                 }
@@ -452,7 +460,8 @@ static ssize_t _enc_extension_ip_resource(uint8_t **dst, const uint8_t *dst_end,
 
 static ssize_t _enc_extension(uint8_t **dst, const uint8_t *dst_end,
                               const uint8_t **src, const uint8_t *src_end,
-                              c509_extension_base_t *extn_buf)
+                              void *extn_buf,
+                              size_t extn_size)
 {
     assert(dst_end >= *dst);
     assert(src_end >= *src);
@@ -460,6 +469,7 @@ static ssize_t _enc_extension(uint8_t **dst, const uint8_t *dst_end,
     size_t len;
     const c509_extension_t *extn = NULL;
     const uint8_t *s = *src;
+    c509_extension_base_t *extension = extn_buf;
     {
         if ((ret = mbedtls_asn1_get_tag((unsigned char **)&s, src_end, &len, MBEDTLS_ASN1_CONSTRUCTED_SEQUENCE)) != 0) {
             if (ret == MBEDTLS_ERR_ASN1_OUT_OF_DATA) {
@@ -485,8 +495,8 @@ static ssize_t _enc_extension(uint8_t **dst, const uint8_t *dst_end,
         if ((ret = mbedtls_asn1_get_tag((unsigned char **)&s, src_end, &len, MBEDTLS_ASN1_OCTET_STRING)) != 0) {
             return ret;
         }
-        extn_buf->critical = critical;
-        extn_buf->id = extn->id;
+        extension->critical = critical;
+        extension->id = extn->id;
     }
     uint8_t *dst_cpy = *dst, *d = *dst;
     if (extn->id == C509_EXTENSION_SUBJECT_KEY_IDENTIFIER) {
@@ -514,6 +524,11 @@ static ssize_t _enc_extension(uint8_t **dst, const uint8_t *dst_end,
         }
     }
     else if (extn->id == C509_EXTENSION_IP_RESOURCE) {
+        if (extn_size < sizeof(c509_extension_ip_resource_vla_t)) {
+            return -ENOBUFS;
+        }
+        ((c509_extension_ip_resource_vla_t *)extn_buf)->ip.numof = (extn_size - offsetof(c509_extension_ip_resource_vla_t, range_or_prefix)) /
+                                                                   sizeof(((c509_extension_ip_resource_vla_t *)extn_buf)->range_or_prefix[0]);
         if ((ret = _enc_extension_ip_resource(&d, dst_end, &s, s + len,
                     (c509_extension_ip_resource_t *)extn_buf)) < 0) {
             return ret;
@@ -556,13 +571,13 @@ static ssize_t _enc_extensions(uint8_t **dst, const uint8_t *dst_end,
         c509_extension_authority_key_identifier_t aki;
         c509_extension_basic_constraints_t bc;
         c509_extension_key_usage_t ku;
-        c509_extension_ip_resource_t ip;
+        c509_extension_ip_resource_vla_x_t(C509_EXTN_IP_RESTRICT_MAX) ip;
     } u_ext;
     if ((ret = c509_write_extensions_start(&writer)) < 0) {
         return ret;
     }
     if (!no_extensions) {
-        while ((ret = _enc_extension(&writer.dst, writer.dst_end, &s, src_end, &u_ext.extension)) != 0) {
+        while ((ret = _enc_extension(&writer.dst, writer.dst_end, &s, src_end, &u_ext.extension, sizeof(u_ext))) != 0) {
             if (ret < 0) {
                 return ret;
             }

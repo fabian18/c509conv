@@ -1575,7 +1575,7 @@ int c509_read_extension_ip_resource_finish(c509_reader_t *reader, c509_array_ite
     return _c509_reader_array_finish(reader, iter);
 }
 
-int c509_read_extension_ip_resource_null(c509_reader_t *reader, c509_extension_ip_resource_t *ip)
+ int c509_read_extension_ip_resource_null(c509_reader_t *reader, c509_extension_ip_range_or_prefix_t *range_or_prefix)
 {
     if (!_c509_reader_check(reader)) {
         return -EINVAL;
@@ -1584,7 +1584,7 @@ int c509_read_extension_ip_resource_null(c509_reader_t *reader, c509_extension_i
     nanocbor_value_t dec;
     nanocbor_decoder_init(&dec, reader->src, reader->src_end - reader->src);
     if ((ret = nanocbor_get_null(&dec)) == NANOCBOR_OK) {
-        ip->range_or_prefix.type = C509_EXTENSION_IP_RESOURCE_NULL;
+        range_or_prefix->type = C509_EXTENSION_IP_RESOURCE_NULL;
         ret = dec.cur - reader->src;
         reader->src += ret;
         return ret;
@@ -1626,7 +1626,7 @@ int c509_read_extension_ip_resource_address_or_range_finish(c509_reader_t *reade
     return _c509_reader_array_finish(reader, iter);
 }
 
-int c509_read_extension_ip_resource(c509_reader_t *reader, c509_extension_ipv6_range_or_prefix_list_t *range_or_prefix)
+int c509_read_extension_ip_resource(c509_reader_t *reader, c509_extension_ip_range_or_prefix_t *range_or_prefix)
 {
     if (!_c509_reader_check(reader)) {
         return -EINVAL;
@@ -1677,163 +1677,175 @@ int c509_read_extension_ip_resource(c509_reader_t *reader, c509_extension_ipv6_r
     return ret;
 }
 
-#define _CLLIST_REVERSE(lst_type, lst_ptr)  \
-do {                                        \
-    lst_type *tmp = lst_ptr;                \
-    lst_type *n = tmp->next;                \
-    while (n != lst_ptr) {                  \
-        lst_type *nn = n->next;             \
-        n->next = tmp;                      \
-        tmp = n;                            \
-        n = nn;                             \
-    }                                       \
-    (lst_ptr)->next = tmp;                  \
-} while (0)
-
-int c509_read_extensions(c509_reader_t *reader, void *extn_buf, size_t *extn_buf_size)
+int c509_read_extensions_next(c509_reader_t *reader, c509_array_iterator_t *iter,
+                              void *extn_type, size_t size,
+                              int (*extn_cb)(void * extn, size_t size))
 {
     if (!_c509_reader_check(reader)) {
         return -EINVAL;
     }
     int ret;
     const uint8_t *start = reader->src;
-    c509_extension_list_t *lst = extn_buf;
-    size_t s, buf_size = *extn_buf_size;
-    lst->next = lst;
-    c509_array_iterator_t extn_iter;
-
-    if (buf_size < sizeof(c509_extension_list_t) +
-                   sizeof(c509_extension_key_usage_t) -
-                   sizeof(c509_extension_base_t)) {
-        return -ENOBUFS;
-    }
-    else if ((ret = c509_read_extension_key_usage_optimized(reader, (c509_extension_key_usage_t *)&lst->extension)) < 0) {
-        if ((ret = c509_read_extensions_start(reader, &extn_iter)) < 0) {
+    if (c509_extension_iterator_next(iter) > 0) {
+        if (size < sizeof(c509_extension_base_t)) {
+            return -ENOBUFS;
+        }
+        c509_extension_base_t *extension = extn_type;
+        if ((ret = c509_read_extension(reader, extn_type)) < 0) {
             return ret;
         }
-        while (c509_extension_iterator_next(&extn_iter) > 0) {
-            lst = lst->next;
-            if (buf_size < (s = sizeof(c509_extension_list_t))) {
+        if (extension->id == C509_EXTENSION_SUBJECT_KEY_IDENTIFIER) {
+            if (size < sizeof(c509_extension_subject_key_identifier_t)) {
                 return -ENOBUFS;
             }
-            if ((ret = c509_read_extension(reader, &lst->extension)) < 0) {
+            if ((ret = c509_read_extension_subject_key_identifier(reader,
+                        (c509_extension_subject_key_identifier_t *)extn_type)) < 0) {
                 return ret;
             }
-            buf_size -= s;
-            if (lst->extension.id == C509_EXTENSION_SUBJECT_KEY_IDENTIFIER) {
-                if (buf_size < (s = sizeof(c509_extension_list_t) +
-                                    sizeof(c509_extension_subject_key_identifier_t) -
-                                    sizeof(c509_extension_base_t))) {
-                    return -ENOBUFS;
-                }
-                if ((ret = c509_read_extension_subject_key_identifier(reader,
-                            (c509_extension_subject_key_identifier_t *)&lst->extension)) < 0) {
-                    return ret;
-                }
-                buf_size -= s;
-                lst->next = (c509_extension_list_t *)
-                            (((c509_extension_subject_key_identifier_t *)(&lst->extension)) + 1);
+        }
+        else if (extension->id == C509_EXTENSION_KEY_USAGE) {
+            if (size < sizeof(c509_extension_key_usage_t)) {
+                return -ENOBUFS;
             }
-            else if (lst->extension.id == C509_EXTENSION_KEY_USAGE) {
-                if (buf_size < (s = sizeof(c509_extension_list_t) +
-                                    sizeof(c509_extension_key_usage_t) -
-                                    sizeof(c509_extension_base_t))) {
-                    return -ENOBUFS;
-                }
-                if ((ret = c509_read_extension_key_usage(reader,
-                            (c509_extension_key_usage_t *)&lst->extension)) < 0) {
-                    return ret;
-                }
-                buf_size -= s;
-                lst->next = (c509_extension_list_t *)
-                            (((c509_extension_key_usage_t *)(&lst->extension)) + 1);
+            if ((ret = c509_read_extension_key_usage(reader,
+                        (c509_extension_key_usage_t *)extn_type)) < 0) {
+                return ret;
             }
-            else if (lst->extension.id == C509_EXTENSION_BASIC_CONSTRAIINTS) {
-                if (buf_size < (s = sizeof(c509_extension_list_t) +
-                                    sizeof(c509_extension_basic_constraints_t) -
-                                    sizeof(c509_extension_base_t))) {
-                    return -ENOBUFS;
-                }
-                if ((ret = c509_read_extension_basic_constraints(reader,
-                            (c509_extension_basic_constraints_t *)&lst->extension)) < 0) {
-                    return ret;
-                }
-                buf_size -= s;
-                lst->next = (c509_extension_list_t *)
-                            (((c509_extension_basic_constraints_t *)(&lst->extension)) + 1);
+        }
+        else if (extension->id == C509_EXTENSION_BASIC_CONSTRAIINTS) {
+            if (size < sizeof(c509_extension_basic_constraints_t)) {
+                return -ENOBUFS;
             }
-            else if (lst->extension.id == C509_EXTENSION_AUTHORITY_KEY_IDENTIFIER) {
-                if (buf_size < (s = sizeof(c509_extension_list_t) +
-                                    sizeof(c509_extension_authority_key_identifier_t) -
-                                    sizeof(c509_extension_base_t))) {
-                    return -ENOBUFS;
-                }
-                if ((ret = c509_read_extension_authority_key_identifier(reader,
-                            (c509_extension_authority_key_identifier_t *)&lst->extension)) < 0) {
-                    return ret;
-                }
-                buf_size -= s;
-                lst->next = (c509_extension_list_t *)
-                            (((c509_extension_authority_key_identifier_t *)(&lst->extension)) + 1);
+            if ((ret = c509_read_extension_basic_constraints(reader,
+                        (c509_extension_basic_constraints_t *)extn_type)) < 0) {
+                return ret;
             }
-            else if (lst->extension.id == C509_EXTENSION_IP_RESOURCE) {
-                c509_extension_ip_resource_t *ip_lst = (c509_extension_ip_resource_t *)&lst->extension;
-                c509_extension_ipv6_range_or_prefix_list_t *range_or_prefix = &ip_lst->range_or_prefix;
-                range_or_prefix->next = range_or_prefix;
-                c509_array_iterator_t ip_res_iter;
-                if (buf_size < (s = sizeof(c509_extension_list_t) +
-                                    sizeof(c509_extension_ip_resource_t) -
-                                    sizeof(c509_extension_base_t))) {
-                    return -ENOBUFS;
-                }
-                if ((ret = c509_read_extension_ip_resource_start(reader, &ip_res_iter, ip_lst)) < 0) {
+        }
+        else if (extension->id == C509_EXTENSION_AUTHORITY_KEY_IDENTIFIER) {
+            if (size < sizeof(c509_extension_authority_key_identifier_t)) {
+                return -ENOBUFS;
+            }
+            if ((ret = c509_read_extension_authority_key_identifier(reader,
+                        (c509_extension_authority_key_identifier_t *)extn_type)) < 0) {
+                return ret;
+            }
+        }
+        else if (extension->id == C509_EXTENSION_IP_RESOURCE) {
+            if (size < sizeof(c509_extension_ip_resource_vla_x_t(1))) {
+                return -ENOBUFS;
+            }
+            c509_extension_ip_resource_vla_t *ip = (c509_extension_ip_resource_vla_t *)extn_type;
+            c509_extension_ip_range_or_prefix_t *range_or_prefix = ip->range_or_prefix;
+            c509_array_iterator_t ip_res_iter;
+            if ((ret = c509_read_extension_ip_resource_start(reader, &ip_res_iter, &ip->ip)) < 0) {
+                return ret;
+            }
+            if ((ret = c509_read_extension_ip_resource_next(&ip_res_iter)) <= 0) {
+                return -ENOTSUP;
+            }
+            if ((ret = c509_read_extension_ip_resource_null(reader, range_or_prefix)) <= 0) {
+                c509_array_iterator_t addr_range_iter;
+                if ((ret = c509_read_extension_ip_resource_address_or_range_start(reader, &addr_range_iter)) < 0) {
                     return ret;
                 }
-                buf_size -= s;
-                if ((ret = c509_read_extension_ip_resource_next(&ip_res_iter)) <= 0) {
-                    return -ENOTSUP;
-                }
-                if ((ret = c509_read_extension_ip_resource_null(reader, ip_lst)) <= 0) {
-                    c509_array_iterator_t addr_range_iter;
-                    if ((ret = c509_read_extension_ip_resource_address_or_range_start(reader, &addr_range_iter)) < 0) {
+                ip->ip.numof = 0;
+                while (c509_read_extension_ip_resource_address_or_range_next(&addr_range_iter) > 0) {
+                    if ((uint8_t *)(&range_or_prefix[1]) > (((uint8_t *)(extn_type)) + size)) {
+                        return -ENOBUFS;
+                    }
+                    if ((ret = c509_read_extension_ip_resource(reader, range_or_prefix)) < 0) {
                         return ret;
                     }
-                    while (c509_read_extension_ip_resource_address_or_range_next(&addr_range_iter) > 0) {
-                        if (buf_size < (s = sizeof(c509_extension_ipv6_range_or_prefix_list_t))) {
-                            return -ENOBUFS;
-                        }
-                        range_or_prefix = range_or_prefix->next;
-                        if ((ret = c509_read_extension_ip_resource(reader, range_or_prefix)) < 0) {
-                            return ret;
-                        }
-                        buf_size -= s;
-                        range_or_prefix->next = range_or_prefix + 1;
-                    }
-                    if ((ret = c509_read_extension_ip_resource_address_or_range_finish(reader, &addr_range_iter)) < 0) {
-                        return ret;
-                    }
+                    range_or_prefix++;
+                    ip->ip.numof++;
                 }
-                if ((ret = c509_read_extension_ip_resource_next(&ip_res_iter)) > 0) {
+                if (ip->ip.numof == 0) {
                     return -ENOTSUP;
                 }
-                if ((ret = c509_read_extension_ip_resource_finish(reader, &ip_res_iter)) < 0) {
+                if ((ret = c509_read_extension_ip_resource_address_or_range_finish(reader, &addr_range_iter)) < 0) {
                     return ret;
                 }
-                lst->next = (c509_extension_list_t *)range_or_prefix->next;
-                range_or_prefix->next = &ip_lst->range_or_prefix;
-                _CLLIST_REVERSE(c509_extension_ipv6_range_or_prefix_list_t, &ip_lst->range_or_prefix);
             }
             else {
+                ip->ip.numof = 1; /* NULL */
+            }
+            if ((ret = c509_read_extension_ip_resource_next(&ip_res_iter)) > 0) {
+                return -ENOTSUP;
+            }
+            if ((ret = c509_read_extension_ip_resource_finish(reader, &ip_res_iter)) < 0) {
+                return ret;
+            }
+        }
+        else {
+            if (!extn_cb || extn_cb(extn_type, reader->src_end - reader->src) < 0) {
                 return -ENOTSUP;
             }
         }
+    }
+    return reader->src - start;
+}
+
+int c509_read_extensions(c509_reader_t *reader, c509_extensions_t *extn)
+{
+    if (!_c509_reader_check(reader)) {
+        return -EINVAL;
+    }
+    int ret;
+    const uint8_t *start = reader->src;
+    if ((ret = c509_read_extension_key_usage_optimized(reader, &extn->ku) < 0)) {
+        c509_array_iterator_t extn_iter;
+        if ((ret = c509_read_extensions_start(reader, &extn_iter)) < 0) {
+            return ret;
+        }
+        do {
+            c509_extension_base_t extension = { .id = 0 };
+            c509_reader_t tmp_reader = *reader;
+            if ((ret = c509_read_extensions_next(&tmp_reader, &extn_iter,
+                                                 &extension, sizeof(extension), NULL)) < 0) {
+                if (extension.id != 0 && ret == -ENOBUFS) {
+                    if (extension.id == C509_EXTENSION_SUBJECT_KEY_IDENTIFIER) {
+                        if ((ret = c509_read_extensions_next(reader, &extn_iter,
+                                                             &extn->ski.extension, sizeof(extn->ski), NULL)) < 0) {
+                            return ret;
+                        }
+                    }
+                    else if (extension.id == C509_EXTENSION_KEY_USAGE) {
+                        if ((ret = c509_read_extensions_next(reader, &extn_iter,
+                                                             &extn->ku.extension, sizeof(extn->ku), NULL)) < 0) {
+                            return ret;
+                        }
+                    }
+                    else if (extension.id == C509_EXTENSION_BASIC_CONSTRAIINTS) {
+                        if ((ret = c509_read_extensions_next(reader, &extn_iter,
+                                                             &extn->bc.extension, sizeof(extn->bc), NULL)) < 0) {
+                            return ret;
+                        }
+                    }
+                    else if (extension.id == C509_EXTENSION_AUTHORITY_KEY_IDENTIFIER) {
+                        if ((ret = c509_read_extensions_next(reader, &extn_iter,
+                                                             &extn->aki.extension, sizeof(extn->aki), NULL)) < 0) {
+                            return ret;
+                        }
+                    }
+                    else if (extension.id == C509_EXTENSION_IP_RESOURCE) {
+                        if ((ret = c509_read_extensions_next(reader, &extn_iter,
+                                                             &extn->ip.ip.extension, sizeof(extn->ip.ip.extension), NULL)) < 0) {
+                            return ret;
+                        }
+                    }
+                    else {
+                        return -ENOTSUP;
+                    }
+                }
+                else {
+                    return ret;
+                }
+            }
+        } while (ret != 0 && ret != -ENOTSUP);
         if ((ret = c509_read_extensions_finish(reader, &extn_iter)) < 0) {
             return ret;
         }
     }
-    lst->next = (c509_extension_list_t *)extn_buf;
-    _CLLIST_REVERSE(c509_extension_list_t, ((c509_extension_list_t *)extn_buf));
-    *extn_buf_size = *extn_buf_size - buf_size;
     return reader->src - start;
 }
 
@@ -1975,12 +1987,10 @@ int c509_parse_certificate(c509_crt_t *c509, const void *buf, size_t size)
     if ((ret = c509_read_subject_public_key_info(&reader, &c509->subject_public_key)) < 0) {
         return ret;
     }
-    c509->extensions = (c509_extension_list_t *)c509->buf;
-    size = c509->buf_size;
-    if ((ret = c509_read_extensions(&reader, c509->extensions, &size)) < 0) {
+    memset(&c509->extensions, 0, sizeof(c509->extensions));
+    if ((ret = c509_read_extensions(&reader, &c509->extensions)) < 0) {
         return ret;
     }
-    c509->buf = ((uint8_t *)(c509->buf)) + size;
     if ((ret = c509_read_signature(&reader, &c509->signature)) < 0) {
         return ret;
     }
