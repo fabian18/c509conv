@@ -21,5 +21,5 @@ ssize_t ftobuf(void *buf, size_t size, const char *path)
         }
     };
     fclose(f);
-    return r ? -EIO : size_cpy - size;
+    return r ? -EIO : (ssize_t)(size_cpy - size);
 }

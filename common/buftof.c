@@ -16,5 +16,5 @@ ssize_t buftof(const void *buf, size_t size, const char *path)
         buf = ((unsigned char *)buf) + wr;
         size -= wr;
     }
-    return fclose(f) ? -errno : size;
+    return fclose(f) ? -errno : (ssize_t)size;
 }
